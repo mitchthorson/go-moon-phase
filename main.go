@@ -52,14 +52,20 @@ func getMoonData(date string, numPhases int) []MoonPhase {
 	return moonApiResponse.Phasedata
 }
 
-// returns a Time from a MoonPhase struct
-func getPhaseDate(phase MoonPhase) time.Time {
+// returns the location for local timezone
+func getLocalTimeLocation() *time.Location {
 	now := time.Now()
 	locationName, _ := now.Zone()
 	location, err := time.LoadLocation(locationName)
 	if err != nil {
 		panic("error loading location")
 	}
+	return location
+}
+
+// returns a Time from a MoonPhase struct
+func getPhaseDate(phase MoonPhase) time.Time {
+	location := getLocalTimeLocation()
 	phaseDate := time.Date(phase.Year, time.Month(phase.Month) , phase.Day, 0, 0, 0, 0, location)
 	return phaseDate
 }
@@ -141,10 +147,26 @@ func getOutput(phase string, plaintext bool) string {
 }
 
 func main() {
-	plaintextFlag := flag.Bool("plaintext", false, "Get result in plain english.")
-	flag.Parse()
 	today := time.Now()
+
+	// default save file in user's home directory
+	// defaultSaveFile := "" //get users home directory
+
+	// prefer plaintext or emoji output? defualts to emoji
+	// plaintextFlag := flag.Bool("plaintext", false, "Get result in plain english.")
+	// output file to cache daily phase info, dafaults to $HOME/.moonphase
+	// saveFileFlag := flag.String("savefile", defaultSaveFile, "File to persist output to")
+	// store passed date, default to current date in current time one
+	var dateFlag string
+	flag.StringVar(&dateFlag, "date", today.Format("1/2/2006"), "File to persist output to")
+	flag.Parse()
+	currentLocation := getLocalTimeLocation()
+	dateFromFlag, err := time.ParseInLocation("1/2/2006", dateFlag, currentLocation)
+	if err != nil {
+		panic("error parsing date")
+	}
+	fmt.Println(dateFromFlag)
 	// phaseDate := getOffsetDate(today, 3)
-	phase := getPhaseForDate(today)
-	fmt.Printf("The moon phase for %s is: %s\n", today.Format("Jan. 2 2006"), getOutput(phase, *plaintextFlag))
+	// phase := getPhaseForDate(today)
+	// fmt.Printf("The moon phase for %s is: %s\n", today.Format("Jan. 2 2006"), getOutput(phase, *plaintextFlag))
 }
