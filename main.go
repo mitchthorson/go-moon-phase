@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
+	// "flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -146,26 +148,61 @@ func getOutput(phase string, plaintext bool) string {
 	return emojiMap[phase]
 }
 
+// loads content of save file or returns nil?
+func loadSaveFile(saveFilePath string) string {
+	var output string
+	content, err := ioutil.ReadFile(saveFilePath)
+	if err == nil {
+		output = string(content)
+	}
+	return output
+}
+
+// parses content of save file to time and phase string
+func parseSaveFile(content string) (time.Time, string) {
+	currentLocation := getLocalTimeLocation()
+	splitContent := strings.Split(content, ",")
+	saveTime, err := time.ParseInLocation("1/2/2006", splitContent[0], currentLocation)
+	if err != nil {
+		panic("Error parsing date from savefile")
+	}
+	savePhase := splitContent[1]
+	return saveTime, savePhase
+}
+
 func main() {
-	today := time.Now()
+	// today := time.Now()
 
 	// default save file in user's home directory
-	// defaultSaveFile := "" //get users home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic("error getting home dir")
+	}
+	defaultSaveFile := fmt.Sprintf("%s/%s", homeDir, ".moonphase") 
+	
+	saveFileContent := loadSaveFile(defaultSaveFile)
+	if (saveFileContent != "") {
+		saveDate, savePhase := parseSaveFile(saveFileContent)
+		fmt.Println("save file found")
+		fmt.Printf("Date: %v phase: %s", saveDate, savePhase)
+	} else {
+		fmt.Println("no save file")
+	}
 
 	// prefer plaintext or emoji output? defualts to emoji
 	// plaintextFlag := flag.Bool("plaintext", false, "Get result in plain english.")
 	// output file to cache daily phase info, dafaults to $HOME/.moonphase
 	// saveFileFlag := flag.String("savefile", defaultSaveFile, "File to persist output to")
 	// store passed date, default to current date in current time one
-	var dateFlag string
-	flag.StringVar(&dateFlag, "date", today.Format("1/2/2006"), "File to persist output to")
-	flag.Parse()
-	currentLocation := getLocalTimeLocation()
-	dateFromFlag, err := time.ParseInLocation("1/2/2006", dateFlag, currentLocation)
-	if err != nil {
-		panic("error parsing date")
-	}
-	fmt.Println(dateFromFlag)
+	// var dateFlag string
+	// flag.StringVar(&dateFlag, "date", today.Format("1/2/2006"), "File to persist output to")
+	// flag.Parse()
+	// currentLocation := getLocalTimeLocation()
+	// dateFromFlag, err := time.ParseInLocation("1/2/2006", dateFlag, currentLocation)
+	// if err != nil {
+	// 	panic("error parsing date")
+	// }
+	// fmt.Println(dateFromFlag)
 	// phaseDate := getOffsetDate(today, 3)
 	// phase := getPhaseForDate(today)
 	// fmt.Printf("The moon phase for %s is: %s\n", today.Format("Jan. 2 2006"), getOutput(phase, *plaintextFlag))
