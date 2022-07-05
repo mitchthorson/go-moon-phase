@@ -39,6 +39,7 @@ func getMoonData(date string, numPhases int) []MoonPhase {
 	apiUrl := fmt.Sprintf("https://aa.usno.navy.mil/api/moon/phases/date?date=%s&nump=%d", date, numPhases)
 	resp, err := http.Get(apiUrl)
 	if err != nil {
+		fmt.Println(err)
 		panic("error getting data")
 	}
 	defer resp.Body.Close()
