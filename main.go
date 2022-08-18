@@ -186,13 +186,13 @@ func savePhaseToFile(date time.Time, phase string, saveFilePath string) {
 func main() {
 	// current date
 	today := time.Now()
-	// default save file in user's home directory
+	// ger user's home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatal(err)
 	}
+	// default save file location is ~/.moonphase
 	defaultSaveFile := fmt.Sprintf("%s/%s", homeDir, ".moonphase") 
-
 	// prefer plaintext or emoji output? defualts to emoji
 	plaintextFlag := flag.Bool("plaintext", false, "Get result in plain english.")
 	// output file to cache daily phase info, dafaults to $HOME/.moonphase
@@ -200,13 +200,16 @@ func main() {
 	// store passed date, default to current date in current time one
 	var dateFlag string
 	flag.StringVar(&dateFlag, "date", today.Format(dateFormat), "Date to get phase for, defaults to today")
+	// need to parse the flags
 	flag.Parse()
+	// local timezone
 	currentLocation := getLocalTimeLocation()
+	// convert date string to real date
 	dateFromFlag, err := time.ParseInLocation(dateFormat, dateFlag, currentLocation)
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+	// read from the save file location and check for cached moon phase
 	saveFileContent := loadSaveFile(*saveFileFlag)
 	if (saveFileContent != "") {
 		saveDate, savePhase := parseSaveFile(saveFileContent)
@@ -216,9 +219,11 @@ func main() {
 			os.Exit(0)
 		}
 	}
-
+	// otherwise fetch a new phase from the API for the given date
 	phase := getPhaseForDate(dateFromFlag)
 	phaseOutput := getOutput(phase, *plaintextFlag)
+	// cache result to local save file
 	savePhaseToFile(dateFromFlag, phase, *saveFileFlag) 
+	// print output
 	fmt.Println(phaseOutput)
 }
