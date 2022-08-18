@@ -94,9 +94,9 @@ func getCurrentPhase(now time.Time, recentData []MoonPhase) string{
 				return previousPhase.Phase
 			}
 			// if phase is within a day of next phase, return it
-			if ( phaseDate.Sub(now).Hours() / 24 < 2 ) {
-				return phase.Phase
-			}
+			// if ( phaseDate.Sub(now).Hours() / 24 < 2 ) {
+			// 	return phase.Phase
+			// }
 			// between New Moon and First Quarter ? Waxing Crescent
 			if (previousPhase.Phase == "New Moon" && phase.Phase == "First Quarter") {
 				return "Waxing Crescent"
