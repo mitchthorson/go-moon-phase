@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"log"
 )
 
 // Struct to store an API response from https://aa.usno.navy.mil/data/api#phase
@@ -36,23 +37,22 @@ const dateFormat string = "2006-01-02"
 // fetches data from the Astronomical Applications Department of the U.S. navy
 // https://aa.usno.navy.mil/
 // https://aa.usno.navy.mil/data/api#phase
-// TODO: fetch from cached file in case phase has already been set for a given date
 // Note: the API docs and the API itself asks for dates like 01/02/2006, but really it wants 2006-01-02
 func getMoonData(date string, numPhases int) []MoonPhase {
 	apiUrl := fmt.Sprintf("https://aa.usno.navy.mil/api/moon/phases/date?date=%s&nump=%d", date, numPhases)
 	resp, err := http.Get(apiUrl)
 	if err != nil {
-		panic("error getting data")
+		log.Fatal(err)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		panic("error reding response")
+		log.Fatal(err)
 	}
 	var moonApiResponse = MoonApiResponse{}
 	err = json.Unmarshal(body, &moonApiResponse)
 	if err != nil {
-		panic("error converting data")
+		log.Fatal(err)
 	}
 	return moonApiResponse.Phasedata
 }
@@ -63,8 +63,7 @@ func getLocalTimeLocation() *time.Location {
 	locationName := now.Location().String()
 	location, err := time.LoadLocation(locationName)
 	if err != nil {
-		fmt.Println(err)
-		panic("error loading location")
+		log.Fatal(err)
 	}
 	return location
 }
@@ -84,7 +83,7 @@ func getCurrentPhase(now time.Time, recentData []MoonPhase) string{
 		// if phase is in future
 		if (phaseDate.After(now)) {
 			if (i < 1) {
-				panic("date range of recent data doesn't have enough history")
+				log.Fatal("date range of recent data doesn't have enough history")
 			}
 			//store reference to previous phase
 			previousPhase := recentData[i - 1]
@@ -136,9 +135,8 @@ func getPhaseForDate(date time.Time) string {
 // Return output as string, either plaintext or convert to emoji
 func getOutput(phase string, plaintext bool) string {
 	if (plaintext) {
-		return phase
+		return strings.Trim(phase, "\n")
 	}
-	fmt.Printf("formatting phase from: %s\n", phase)
 
 	emojiMap := map[string]string{
 		"New Moon": "🌑",
@@ -150,11 +148,8 @@ func getOutput(phase string, plaintext bool) string {
 		"Last Quarter": "🌗",
 		"Waning Crescent": "🌘",
 	}
-	fmt.Printf("%t\n", ("Last Quarter" == phase))
-	fmt.Println("Last Quarter")
-	fmt.Println(phase)
 
-	return emojiMap[phase]
+	return emojiMap[strings.Trim(phase, "\n")]
 }
 
 // loads content of save file or returns nil?
@@ -173,10 +168,19 @@ func parseSaveFile(content string) (time.Time, string) {
 	splitContent := strings.Split(content, ",")
 	saveTime, err := time.ParseInLocation(dateFormat, splitContent[0], currentLocation)
 	if err != nil {
-		panic("Error parsing date from savefile")
+		log.Fatal(err)
 	}
 	savePhase := splitContent[1]
 	return saveTime, savePhase
+}
+
+// saves current phase to local file
+func savePhaseToFile(date time.Time, phase string, saveFilePath string) {
+	saveText := []byte(fmt.Sprintf("%s,%s\n", date.Format(dateFormat), phase))
+	err := os.WriteFile(saveFilePath, saveText, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
@@ -185,7 +189,7 @@ func main() {
 	// default save file in user's home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		panic("error getting home dir")
+		log.Fatal(err)
 	}
 	defaultSaveFile := fmt.Sprintf("%s/%s", homeDir, ".moonphase") 
 
@@ -200,26 +204,21 @@ func main() {
 	currentLocation := getLocalTimeLocation()
 	dateFromFlag, err := time.ParseInLocation(dateFormat, dateFlag, currentLocation)
 	if err != nil {
-		panic("error parsing date")
+		log.Fatal(err)
 	}
 	
-	saveFileContent := loadSaveFile(defaultSaveFile)
+	saveFileContent := loadSaveFile(*saveFileFlag)
 	if (saveFileContent != "") {
 		saveDate, savePhase := parseSaveFile(saveFileContent)
-		fmt.Println("save file found")
-		fmt.Printf("Date: %v phase: %s", saveDate, savePhase)
 		// if the save file contains the phase for the requested date, print the phase and exit
 		if (saveDate == dateFromFlag) {
-			fmt.Printf("The moon phase for %s is: %s\n", saveDate.Format("Jan. 2 2006"), getOutput(savePhase, *plaintextFlag))
+			fmt.Println(getOutput(savePhase, *plaintextFlag))
 			os.Exit(0)
 		}
-	} else {
-		fmt.Println("no save file")
 	}
 
-	fmt.Printf("Plaintext?: %t\n", *plaintextFlag)
-	fmt.Printf("Date: %s\n", dateFlag)
-	fmt.Printf("Save file: %s\n", *saveFileFlag)
-	phase := getPhaseForDate(today)
-	fmt.Printf("The moon phase for %s is: %s\n", today.Format("Jan. 2 2006"), getOutput(phase, *plaintextFlag))
+	phase := getPhaseForDate(dateFromFlag)
+	phaseOutput := getOutput(phase, *plaintextFlag)
+	savePhaseToFile(dateFromFlag, phase, *saveFileFlag) 
+	fmt.Println(phaseOutput)
 }
