@@ -103,7 +103,7 @@ func getCurrentPhase(now time.Time, recentData []MoonPhase) string{
 			}
 			// between First Quarter and Full Moon ? Waxing Gibbous
 			if (previousPhase.Phase == "First Quarter" && phase.Phase == "Full Moon") {
-				return "Waxing Crescent"
+				return "Waxing Gibbous"
 			}
 			// between Full Moon and Last Quarter ? Waning Gibbous
 			if (previousPhase.Phase == "Full Moon" && phase.Phase == "Last Quarter") {
